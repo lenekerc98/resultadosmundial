@@ -1037,3 +1037,85 @@ body {
     border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
+/* ==========================================================================
+   ESTILOS DE NOTIFICACIONES (PWA)
+   ========================================================================== */
+.btn-refresh.bell-active {
+    color: #fbbf24; /* Color amarillo/dorado para la campana activa */
+    border-color: rgba(251, 191, 36, 0.5);
+    background: rgba(251, 191, 36, 0.1);
+}
+.btn-refresh.bell-active:hover {
+    background: rgba(251, 191, 36, 0.2);
+    transform: scale(1.1);
+}
+
+/* ==========================================================================
+   RESPONSIVIDAD TOTAL (MOBILE-FIRST)
+   ========================================================================== */
+@media (max-width: 768px) {
+    /* Encabezado */
+    .main-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+        padding: 1rem;
+    }
+    .header-left {
+        width: 100%;
+        text-align: center;
+        align-items: center;
+    }
+    .logo-area {
+        justify-content: center;
+    }
+    .refresh-widget {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    /* Pestañas de Navegación */
+    .navigation-tabs {
+        overflow-x: auto;
+        white-space: nowrap;
+        padding-bottom: 0.5rem;
+        -webkit-overflow-scrolling: touch; /* Suavidad en iOS */
+        justify-content: flex-start; /* Permitir scroll desde el inicio */
+        padding: 0 1rem 0.5rem 1rem;
+    }
+    .tab-button {
+        flex: 0 0 auto; /* Prevenir encogimiento */
+    }
+
+    /* Tablas */
+    .table-responsive {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin-bottom: 1rem;
+    }
+    .standings-table {
+        min-width: 600px; /* Forzar scroll si es muy pequeña */
+    }
+    .standings-table th, 
+    .standings-table td {
+        padding: 0.6rem 0.4rem;
+        font-size: 0.8rem;
+    }
+
+    /* Grillas (Partidos y Resumen) */
+    .matches-grid,
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    /* Controles */
+    .controls-card {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    .selector-group {
+        width: 100%;
+    }
+}
+

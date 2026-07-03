@@ -11,7 +11,10 @@ const STATE = {
     activeTab: 'standings',
     countdownValue: 60,
     timerId: null,
-    isOffline: false
+    isOffline: false,
+    notificationsEnabled: false,
+    lastMatchStates: {}, // Para rastrear goles: { matchId: { goals1, goals2 } }
+    notifiedMatches: new Set() // Para rastrear partidos que ya avisamos que van a empezar
 };
 
 // Mapeo de nombres descriptivos de torneos
@@ -26,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initTabNavigation();
     initSelectors();
     initAutoRefresh();
+    setupNotifications();
     loadData();
 });
 
@@ -158,6 +162,15 @@ async function loadData(isRefresh = false) {
         // Mostrar selector de jornada si estamos en la pestaña Partidos
         updateSelectorVisibility();
 
+        // Notificaciones (solo si están habilitadas y no es la primera carga inicial)
+        if (STATE.notificationsEnabled && Object.keys(STATE.lastMatchStates).length > 0) {
+            checkGoals(STATE.matchesData);
+            checkMatchStarts(STATE.matchesData);
+        }
+        
+        // Actualizar el estado anterior para la próxima comparación
+        updateLastMatchStates(STATE.matchesData);
+
         const now = new Date();
         const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         updateStatusText(`Actualizado a las ${timeString}`);
@@ -197,6 +210,107 @@ function filterActiveTeams(standings, matches) {
 
     if (activeTeamIds.size === 0) return standings;
     return standings.filter(t => activeTeamIds.has(t.teamInfoId));
+}
+
+/* ==========================================================================
+   SISTEMA DE NOTIFICACIONES (GOLES Y COMIENZO)
+   ========================================================================== */
+function setupNotifications() {
+    const btnNotif = document.getElementById('btnNotifications');
+    if (!btnNotif) return;
+
+    // Chequear estado inicial
+    if (Notification.permission === 'granted') {
+        STATE.notificationsEnabled = true;
+        btnNotif.classList.add('bell-active');
+        document.getElementById('notificationIcon').className = 'fa-solid fa-bell';
+    }
+
+    btnNotif.addEventListener('click', () => {
+        if (!('Notification' in window)) {
+            alert('Este navegador no soporta notificaciones de escritorio.');
+            return;
+        }
+
+        if (Notification.permission === 'granted') {
+            // Desactivar manualmente (solo a nivel de app)
+            STATE.notificationsEnabled = !STATE.notificationsEnabled;
+            btnNotif.classList.toggle('bell-active', STATE.notificationsEnabled);
+            document.getElementById('notificationIcon').className = STATE.notificationsEnabled ? 'fa-solid fa-bell' : 'fa-regular fa-bell';
+        } else if (Notification.permission !== 'denied') {
+            Notification.requestPermission().then(permission => {
+                if (permission === 'granted') {
+                    STATE.notificationsEnabled = true;
+                    btnNotif.classList.add('bell-active');
+                    document.getElementById('notificationIcon').className = 'fa-solid fa-bell';
+                    new Notification('¡Notificaciones Activadas!', {
+                        body: 'Te avisaremos de los goles y partidos por empezar.',
+                        icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Soccerball.svg/1024px-Soccerball.svg.png'
+                    });
+                }
+            });
+        } else {
+            alert('Permiso de notificaciones denegado. Cambia la configuración en tu navegador.');
+        }
+    });
+}
+
+function updateLastMatchStates(matches) {
+    matches.forEach(m => {
+        if (!m.matchIsFinished) {
+            STATE.lastMatchStates[m.matchID] = {
+                goals1: m.matchResults.length > 0 ? m.matchResults[0].pointsTeam1 : 0,
+                goals2: m.matchResults.length > 0 ? m.matchResults[0].pointsTeam2 : 0
+            };
+        }
+    });
+}
+
+function checkGoals(currentMatches) {
+    currentMatches.forEach(m => {
+        if (m.matchIsFinished) return; // No alertar partidos viejos terminados
+
+        const prevState = STATE.lastMatchStates[m.matchID];
+        if (!prevState) return; // Si es la primera vez que vemos este partido, no alertar aún
+
+        const currentG1 = m.matchResults.length > 0 ? m.matchResults[0].pointsTeam1 : 0;
+        const currentG2 = m.matchResults.length > 0 ? m.matchResults[0].pointsTeam2 : 0;
+
+        if (currentG1 > prevState.goals1) {
+            triggerGoalNotification(m, m.team1.teamName, currentG1, currentG2);
+        }
+        if (currentG2 > prevState.goals2) {
+            triggerGoalNotification(m, m.team2.teamName, currentG1, currentG2);
+        }
+    });
+}
+
+function triggerGoalNotification(match, scorerTeam, score1, score2) {
+    const title = `¡GOL de ${scorerTeam}! ⚽`;
+    const body = `${match.team1.teamName} ${score1} - ${score2} ${match.team2.teamName}`;
+    new Notification(title, {
+        body: body,
+        icon: match.team1.teamIconUrl // Se podría usar un icono de gol genérico
+    });
+}
+
+function checkMatchStarts(currentMatches) {
+    const now = new Date();
+    currentMatches.forEach(m => {
+        if (m.matchIsFinished || STATE.notifiedMatches.has(m.matchID)) return;
+
+        const matchDate = new Date(m.matchDateTime);
+        const diffMinutes = (matchDate - now) / (1000 * 60);
+
+        // Si el partido empieza en los próximos 10 minutos (y es en el futuro > 0)
+        if (diffMinutes > 0 && diffMinutes <= 10) {
+            STATE.notifiedMatches.add(m.matchID);
+            new Notification('¡Partido por comenzar! ⏳', {
+                body: `${match.team1.teamName} vs ${match.team2.teamName} arranca en breve.`,
+                icon: match.team1.teamIconUrl
+            });
+        }
+    });
 }
 
 /* ==========================================================================

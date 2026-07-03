@@ -15,6 +15,14 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- CSS Estilos -->
     <link rel="stylesheet" href="styles.css">
+    
+    <!-- PWA / App para Teléfono -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2ea043">
+    <!-- Soporte para iOS -->
+    <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Soccerball.svg/1024px-Soccerball.svg.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 
 <body>
@@ -39,6 +47,9 @@
                     </span>
                 </div>
                 <div class="refresh-actions">
+                    <button class="btn-refresh" id="btnNotifications" title="Activar notificaciones">
+                        <i class="fa-regular fa-bell" id="notificationIcon"></i>
+                    </button>
                     <button class="btn-refresh" id="btnManualRefresh" title="Actualizar ahora">
                         <i class="fa-solid fa-rotate-right" id="refreshIcon"></i>
                     </button>
@@ -145,6 +156,20 @@
         </footer>
     </div>
 
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registrado con éxito:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('Fallo en el registro del ServiceWorker:', error);
+                    });
+            });
+        }
+    </script>
     <!-- JS Aplicación -->
     <script src="app.js"></script>
 </body>
