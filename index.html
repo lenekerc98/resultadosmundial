@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoolStats - Posiciones y Resultados en Tiempo Real</title>
+    <!-- Google Fonts: Outfit e Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <!-- FontAwesome para Iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- CSS Estilos -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Encabezado Principal (Google Style) -->
+        <header class="main-header">
+            <div class="header-left">
+                <div class="logo-area">
+                    <span class="live-pulse"></span>
+                    <i class="fa-solid fa-trophy trophy-logo"></i>
+                    <h1>GoolStats</h1>
+                </div>
+                <p class="subtitle">Resultados y posiciones en vivo (Sin Backend)</p>
+            </div>
+
+            <!-- Widget de Actualización en Tiempo Real -->
+            <div class="refresh-widget" id="refreshWidget">
+                <div class="refresh-info">
+                    <span id="updateStatusText">Actualizado ahora</span>
+                    <span class="refresh-timer-wrapper">
+                        Auto-refresco en <span id="countdown">60</span>s
+                    </span>
+                </div>
+                <div class="refresh-actions">
+                    <button class="btn-refresh" id="btnManualRefresh" title="Actualizar ahora">
+                        <i class="fa-solid fa-rotate-right" id="refreshIcon"></i>
+                    </button>
+                    <div class="timer-progress-bar">
+                        <div class="timer-progress-fill" id="timerProgress"></div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Filtros y Selectores de Torneo -->
+        <section class="controls-card">
+            <div class="selector-group" style="display: none;">
+                <label for="tournamentSelect"><i class="fa-solid fa-earth-americas"></i> Torneo</label>
+                <div class="select-wrapper">
+                    <select id="tournamentSelect">
+                        <!--<option value="ucl24" data-season="2024">🏆 UEFA Champions League 2024/25</option>-->
+                        <!--<option value="ucl2025" data-season="2025">🏆 UEFA Champions League 2025/26</option>-->
+                        <option value="wm26" data-season="2026" selected>🌍 FIFA Copa del Mundo 2026</option>
+                        <!--<option value="em2024" data-season="2024">🇪🇺 UEFA Eurocopa 2024</option>-->
+                        <!--<option value="bl1" data-season="2025">🇩🇪 1. Bundesliga 2025/26</option>-->
+                    </select>
+                    <i class="fa-solid fa-chevron-down select-arrow"></i>
+                </div>
+            </div>
+
+            <!-- Filtro de Jornadas (Solo visible en pestaña Partidos) -->
+            <div class="selector-group" id="matchdaySelectorGroup" style="display: none;">
+                <label for="matchdaySelect"><i class="fa-solid fa-calendar-days"></i> Jornada / Fase</label>
+                <div class="select-wrapper">
+                    <select id="matchdaySelect">
+                        <!-- Se llena dinámicamente -->
+                    </select>
+                    <i class="fa-solid fa-chevron-down select-arrow"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- Navegación por Pestañas (Google Style Tabs) -->
+        <nav class="navigation-tabs">
+            <button class="tab-button active" data-tab="standings">
+                <i class="fa-solid fa-list-ol"></i> Clasificación
+            </button>
+            <button class="tab-button" data-tab="matches">
+                <i class="fa-solid fa-futbol"></i> Partidos
+            </button>
+            <button class="tab-button" data-tab="bracket">
+                <i class="fa-solid fa-diagram-project"></i> Fase Final
+            </button>
+            <button class="tab-button" data-tab="summary">
+                <i class="fa-solid fa-circle-nodes"></i> Clasificados
+            </button>
+        </nav>
+
+        <!-- Contenedor del Contenido Principal -->
+        <main class="main-content">
+            <!-- PESTAÑA: CLASIFICACIÓN -->
+            <div class="tab-content active" id="tab-standings">
+                <div class="loader-container" id="standingsLoader">
+                    <div class="spinner"></div>
+                    <p>Cargando tabla de posiciones...</p>
+                </div>
+                <div id="standingsContainer">
+                    <!-- Se llena dinámicamente -->
+                </div>
+            </div>
+
+            <!-- PESTAÑA: PARTIDOS -->
+            <div class="tab-content" id="tab-matches">
+                <div class="loader-container" id="matchesLoader">
+                    <div class="spinner"></div>
+                    <p>Cargando partidos...</p>
+                </div>
+                <div id="matchesContainer">
+                    <!-- Se llena dinámicamente -->
+                </div>
+            </div>
+
+            <!-- PESTAÑA: FASE FINAL (BRACKET) -->
+            <div class="tab-content" id="tab-bracket">
+                <div class="loader-container" id="bracketLoader">
+                    <div class="spinner"></div>
+                    <p>Generando llaves del torneo...</p>
+                </div>
+                <div id="bracketContainer" class="bracket-scroll-wrapper">
+                    <!-- Se llena dinámicamente -->
+                </div>
+            </div>
+
+            <!-- PESTAÑA: RESUMEN DE CLASIFICADOS -->
+            <div class="tab-content" id="tab-summary">
+                <div id="summaryContainer">
+                    <!-- Se llena dinámicamente -->
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>Datos proporcionados en tiempo real por <a href="https://openligadb.de" target="_blank"
+                    rel="noopener">OpenLigaDB API</a> sin intermediarios de backend.</p>
+            <p>&copy; 2026 GoolStats - Hecho con <i class="fa-solid fa-heart text-danger"></i> para entusiastas del
+                fútbol.</p>
+        </footer>
+    </div>
+
+    <!-- JS Aplicación -->
+    <script src="app.js"></script>
+</body>
+
+</html>

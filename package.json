@@ -1,0 +1,17 @@
+{
+  "name": "goolstats",
+  "version": "1.0.0",
+  "description": "Rastreador de posiciones y resultados de fútbol en tiempo real sin backend",
+  "main": "index.html",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "soccer",
+    "standings",
+    "realtime",
+    "openligadb"
+  ],
+  "author": "Antigravity",
+  "license": "MIT"
+}
