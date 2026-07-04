@@ -1118,14 +1118,14 @@ function renderBracket() {
                     <div class="bracket-match-header"><span>\${matchDateStr}</span> <span class="bracket-time">\${timeStr}</span></div>
                     <div class="bracket-team-row ${t1Class}" ${t1Click}>
                         <div class="team-cell">
-                            ${m1.team1.teamIconUrl ? \`<img class="team-logo" src="\${m1.team1.teamIconUrl}">\` : \`<i class="fa-solid fa-question-circle" style="color:var(--text-muted);font-size:0.95rem;width:16px;"></i>\`}
+                            ${m1.team1.teamIconUrl ? `<img class="team-logo" src="${m1.team1.teamIconUrl}">` : `<i class="fa-solid fa-question-circle" style="color:var(--text-muted);font-size:0.95rem;width:16px;"></i>`}
                             <span title="\${translateTeamName(m1.team1.teamName)}">\${m1.team1.shortName || translateTeamName(m1.team1.teamName)}</span>
                         </div>
                         <span class="bracket-score"><i class="fa-solid fa-hand-pointer" style="font-size:0.7rem; opacity:0.3;"></i></span>
                     </div>
                     <div class="bracket-team-row ${t2Class}" ${t2Click}>
                         <div class="team-cell">
-                            ${m1.team2.teamIconUrl ? \`<img class="team-logo" src="\${m1.team2.teamIconUrl}">\` : \`<i class="fa-solid fa-question-circle" style="color:var(--text-muted);font-size:0.95rem;width:16px;"></i>\`}
+                            ${m1.team2.teamIconUrl ? `<img class="team-logo" src="${m1.team2.teamIconUrl}">` : `<i class="fa-solid fa-question-circle" style="color:var(--text-muted);font-size:0.95rem;width:16px;"></i>`}
                             <span title="\${translateTeamName(m1.team2.teamName)}">\${m1.team2.shortName || translateTeamName(m1.team2.teamName)}</span>
                         </div>
                         <span class="bracket-score"><i class="fa-solid fa-hand-pointer" style="font-size:0.7rem; opacity:0.3;"></i></span>
@@ -1177,14 +1177,14 @@ function renderBracket() {
                     <div class="bracket-match-header"><span>\${matchDateStr}</span> <span class="bracket-time">\${statusStr}</span></div>
                     <div class="bracket-team-row ${t1Class}">
                         <div class="team-cell">
-                            ${m1.team1.teamIconUrl ? \`<img class="team-logo" src="\${m1.team1.teamIconUrl}">\` : \`<i class="fa-solid fa-question-circle" style="color:var(--text-muted);font-size:0.95rem;width:16px;"></i>\`}
+                            ${m1.team1.teamIconUrl ? `<img class="team-logo" src="${m1.team1.teamIconUrl}">` : `<i class="fa-solid fa-question-circle" style="color:var(--text-muted);font-size:0.95rem;width:16px;"></i>`}
                             <span title="\${translateTeamName(m1.team1.teamName)}">\${m1.team1.shortName || translateTeamName(m1.team1.teamName)}</span>
                         </div>
                         <span class="bracket-score">\${(m1.matchIsFinished || isLive) && !m1.isVirtual ? t1Agg : '-'}</span>
                     </div>
                     <div class="bracket-team-row ${t2Class}">
                         <div class="team-cell">
-                            ${m1.team2.teamIconUrl ? \`<img class="team-logo" src="\${m1.team2.teamIconUrl}">\` : \`<i class="fa-solid fa-question-circle" style="color:var(--text-muted);font-size:0.95rem;width:16px;"></i>\`}
+                            ${m1.team2.teamIconUrl ? `<img class="team-logo" src="${m1.team2.teamIconUrl}">` : `<i class="fa-solid fa-question-circle" style="color:var(--text-muted);font-size:0.95rem;width:16px;"></i>`}
                             <span title="\${translateTeamName(m1.team2.teamName)}">\${m1.team2.shortName || translateTeamName(m1.team2.teamName)}</span>
                         </div>
                         <span class="bracket-score">\${(m1.matchIsFinished || isLive) && !m1.isVirtual ? t2Agg : '-'}</span>
