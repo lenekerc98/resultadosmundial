@@ -1,9 +1,9 @@
 const CACHE_NAME = 'mundial-v1';
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/styles.css',
-  '/app.js'
+  './',
+  './index.html',
+  './styles.css',
+  './app.js'
 ];
 
 // Install event: cache core assets
