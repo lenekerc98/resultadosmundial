@@ -848,11 +848,11 @@ function generateWorldCupBracket(koMatches) {
 
     if (rounds.r32.matches.length === 0) return [];
 
-    // Helper para obtener el ganador (física o virtualmente)
     const getMatchWinner = (m) => {
         if (!m) return null;
+        const score = getMatchScore(m);
+        
         if (m.matchIsFinished) {
-            const score = getMatchScore(m);
             if (score.score1 > score.score2) return m.team1;
             if (score.score2 > score.score1) return m.team2;
             const penResult = m.matchResults && m.matchResults.find(r => r.resultTypeID === 4);
@@ -862,6 +862,12 @@ function generateWorldCupBracket(koMatches) {
             }
             return null;
         }
+        
+        // LÓGICA DE PROYECCIÓN EN VIVO
+        // Si el partido está en vivo y alguien va ganando, proyectarlo. Si empatan, se quita (retorna null).
+        if (score.score1 > score.score2) return m.team1;
+        if (score.score2 > score.score1) return m.team2;
+
         if (m.isVirtualFinished) {
             return m.virtualWinner;
         }
@@ -1137,8 +1143,9 @@ function renderBracket() {
                 let t1Class = ''; let t2Class = '';
                 const getWinner = (m) => {
                     if (!m) return null;
+                    const s = getMatchScore(m);
+
                     if (m.matchIsFinished) {
-                        const s = getMatchScore(m);
                         if (s.score1 > s.score2) return m.team1;
                         if (s.score2 > s.score1) return m.team2;
                         const pen = m.matchResults && m.matchResults.find(r => r.resultTypeID === 4);
@@ -1146,7 +1153,14 @@ function renderBracket() {
                             if (pen.pointsTeam1 > pen.pointsTeam2) return m.team1;
                             return m.team2;
                         }
+                        return null;
                     }
+
+                    // PROYECCIÓN EN VIVO
+                    // Proyecta temporalmente a quien vaya ganando. Si empatan (o van 0-0), no pasa nadie.
+                    if (s.score1 > s.score2) return m.team1;
+                    if (s.score2 > s.score1) return m.team2;
+
                     return null;
                 };
 
