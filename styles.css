@@ -848,6 +848,12 @@ body {
     font-size: 0.8rem;
     font-weight: 500;
     border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.bracket-team-row:hover {
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .bracket-team-row:last-child {
@@ -860,8 +866,15 @@ body {
     background: rgba(255, 255, 255, 0.01);
 }
 
+.bracket-team-row.simulated-winner {
+    font-weight: 700;
+    color: var(--accent-green);
+    background: rgba(16, 185, 129, 0.1);
+}
+
 .bracket-team-row.loser {
     color: var(--text-muted);
+    opacity: 0.5;
 }
 
 .bracket-score {

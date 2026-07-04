@@ -14,7 +14,8 @@ const STATE = {
     isOffline: false,
     notificationsEnabled: false,
     lastMatchStates: {}, // Para rastrear goles: { matchId: { goals1, goals2 } }
-    notifiedMatches: new Set() // Para rastrear partidos que ya avisamos que van a empezar
+    notifiedMatches: new Set(), // Para rastrear partidos que ya avisamos que van a empezar
+    simulatedWinners: {} // Para el Simulador de Fase Final { matchId: teamObj }
 };
 
 // Mapeo de nombres descriptivos de torneos
@@ -962,28 +963,114 @@ function generateWorldCupBracket(koMatches) {
 }
 
 /* --- PESTAÑA: FASE FINAL (BRACKET) --- */
+function advanceTeam(matchId, teamInfo, nextMatchId) {
+    if(!teamInfo || !teamInfo.teamId) return;
+    STATE.simulatedWinners[matchId] = teamInfo;
+    
+    // Limpiar predicciones futuras en cascada
+    clearForwardSimulation(nextMatchId);
+    renderBracket();
+}
+
+function clearForwardSimulation(matchId) {
+    if(!matchId) return;
+    if(STATE.simulatedWinners[matchId]) {
+        delete STATE.simulatedWinners[matchId];
+        const nextMap = {
+            'p9': 'p13', 'p10': 'p13', 'p11': 'p14', 'p12': 'p14',
+            'p13': 'p15', 'p14': 'p15'
+        };
+        clearForwardSimulation(nextMap[matchId]);
+    }
+}
+
+function getProjectedPhases() {
+    // Tomar los mejores 16 equipos de los standings
+    let top16 = STATE.standingsData.slice(0, 16).map(t => ({
+        teamId: t.teamInfoId,
+        teamName: t.teamName,
+        shortName: t.shortName,
+        teamIconUrl: t.teamIconUrl
+    }));
+    
+    while(top16.length < 16) {
+        top16.push({ teamId: 'tbd'+top16.length, teamName: 'Por Definir', shortName: 'TBD', teamIconUrl: null });
+    }
+
+    // Octavos (8)
+    const octavos = [];
+    for(let i=0; i<8; i++) {
+        octavos.push({
+            matchID: 'p' + (i+1),
+            nextMatchID: 'p' + (9 + Math.floor(i/2)),
+            team1: top16[i], team2: top16[15-i],
+            isVirtual: true, isProjected: true
+        });
+    }
+
+    // Cuartos (4)
+    const cuartos = [];
+    for(let i=0; i<4; i++) {
+        const mId = 'p' + (9+i);
+        const prev1 = octavos[i*2].matchID;
+        const prev2 = octavos[i*2+1].matchID;
+        cuartos.push({
+            matchID: mId, nextMatchID: 'p' + (13 + Math.floor(i/2)),
+            team1: STATE.simulatedWinners[prev1] || { teamName: 'Ganador O'+(i*2+1), shortName: 'G', teamIconUrl: null },
+            team2: STATE.simulatedWinners[prev2] || { teamName: 'Ganador O'+(i*2+2), shortName: 'G', teamIconUrl: null },
+            isVirtual: true, isProjected: true
+        });
+    }
+
+    // Semis (2)
+    const semis = [];
+    for(let i=0; i<2; i++) {
+        const mId = 'p' + (13+i);
+        const prev1 = cuartos[i*2].matchID;
+        const prev2 = cuartos[i*2+1].matchID;
+        semis.push({
+            matchID: mId, nextMatchID: 'p15',
+            team1: STATE.simulatedWinners[prev1] || { teamName: 'Ganador C'+(i*2+1), shortName: 'G', teamIconUrl: null },
+            team2: STATE.simulatedWinners[prev2] || { teamName: 'Ganador C'+(i*2+2), shortName: 'G', teamIconUrl: null },
+            isVirtual: true, isProjected: true
+        });
+    }
+
+    // Final (1)
+    const finalMatch = {
+        matchID: 'p15', nextMatchID: null,
+        team1: STATE.simulatedWinners['p13'] || { teamName: 'Ganador S1', shortName: 'G', teamIconUrl: null },
+        team2: STATE.simulatedWinners['p14'] || { teamName: 'Ganador S2', shortName: 'G', teamIconUrl: null },
+        isVirtual: true, isProjected: true
+    };
+
+    return [
+        { name: 'Octavos de Final', matches: octavos },
+        { name: 'Cuartos de Final', matches: cuartos },
+        { name: 'Semifinales', matches: semis },
+        { name: 'Final', matches: [finalMatch] }
+    ];
+}
+
+// Necesario hacer window.advanceTeam para que el HTML string lo encuentre
+window.advanceTeam = advanceTeam;
+
 function renderBracket() {
     const container = document.getElementById('bracketContainer');
     container.innerHTML = '';
 
-    // Filtrar partidos eliminatorios
     const koStages = ['Achtelfinale', 'Viertelfinale', 'Halbfinale', 'Finale', 'Endspiel', 'Play-Offs', 'Sechzehntelfinale'];
     const koMatches = STATE.matchesData.filter(m => {
         if (!m.group || !m.group.groupName) return false;
         return koStages.some(stage => m.group.groupName.includes(stage));
     });
 
+    let sortedPhases = [];
     if (koMatches.length === 0) {
-        container.innerHTML = `
-            <div class="summary-empty-state">
-                <i class="fa-solid fa-diagram-project" style="font-size: 2rem; margin-bottom: 0.5rem;"></i>
-                <p>La fase de llaves / eliminación directa aún no se ha programado.</p>
-            </div>`;
-        return;
+        sortedPhases = getProjectedPhases();
+    } else {
+        sortedPhases = generateWorldCupBracket(koMatches);
     }
-
-    // Generar o cargar llaves del Mundial
-    const sortedPhases = generateWorldCupBracket(koMatches);
 
     const bracketWrapper = document.createElement('div');
     bracketWrapper.className = 'bracket-container';
@@ -994,94 +1081,103 @@ function renderBracket() {
 
         const header = document.createElement('div');
         header.className = 'round-header-name';
-        header.textContent = phase.name;
+        header.textContent = phase.name + (koMatches.length === 0 ? ' (Simulador)' : '');
         roundColumn.appendChild(header);
 
-        // Agrupar por eliminatorias
         const pairedMatches = pairDoubleLegMatches(phase.matches);
 
         pairedMatches.forEach(pair => {
             const matchNode = document.createElement('div');
             matchNode.className = 'bracket-match-node';
-
             const m1 = pair.match1;
             const m2 = pair.match2;
 
-            const score1 = getMatchScore(m1);
-            const score2 = m2 ? getMatchScore(m2) : null;
-
-            // Calcular agregado
-            let t1Agg = score1.score1;
-            let t2Agg = score1.score2;
-            
-            if (m2) {
-                if (m2.team1.teamId === m1.team2.teamId) {
-                    t1Agg += score2.score2;
-                    t2Agg += score2.score1;
-                } else {
-                    t1Agg += score2.score1;
-                    t2Agg += score2.score2;
+            if (m1.isProjected) {
+                const winnerObj = STATE.simulatedWinners[m1.matchID];
+                let t1Class = ''; let t2Class = '';
+                if (winnerObj) {
+                    if (winnerObj.teamId === m1.team1.teamId) { t1Class = 'simulated-winner'; t2Class = 'loser'; }
+                    else if (winnerObj.teamId === m1.team2.teamId) { t2Class = 'simulated-winner'; t1Class = 'loser'; }
                 }
-            }
+                
+                const t1Click = (m1.team1.teamId && !m1.team1.teamId.toString().startsWith('tbd')) ? `onclick='window.advanceTeam("${m1.matchID}", ${JSON.stringify(m1.team1).replace(/'/g,"&apos;")}, "${m1.nextMatchID}")'` : '';
+                const t2Click = (m1.team2.teamId && !m1.team2.teamId.toString().startsWith('tbd')) ? `onclick='window.advanceTeam("${m1.matchID}", ${JSON.stringify(m1.team2).replace(/'/g,"&apos;")}, "${m1.nextMatchID}")'` : '';
 
-            // Marcar ganadores
-            let t1Class = '';
-            let t2Class = '';
-            
-            const getWinner = (m) => {
-                if (!m) return null;
-                if (m.matchIsFinished) {
-                    const s = getMatchScore(m);
-                    if (s.score1 > s.score2) return m.team1;
-                    if (s.score2 > s.score1) return m.team2;
-                    const pen = m.matchResults && m.matchResults.find(r => r.resultTypeID === 4);
-                    if (pen) {
-                        if (pen.pointsTeam1 > pen.pointsTeam2) return m.team1;
-                        return m.team2;
+                matchNode.innerHTML = `
+                    <div class="bracket-team-row ${t1Class}" ${t1Click}>
+                        <div class="team-cell">
+                            ${m1.team1.teamIconUrl ? \`<img class="team-logo" src="\${m1.team1.teamIconUrl}">\` : \`<i class="fa-solid fa-question-circle" style="color:var(--text-muted);font-size:0.95rem;width:16px;"></i>\`}
+                            <span title="\${translateTeamName(m1.team1.teamName)}">\${m1.team1.shortName || translateTeamName(m1.team1.teamName)}</span>
+                        </div>
+                        <span class="bracket-score"><i class="fa-solid fa-hand-pointer" style="font-size:0.7rem; opacity:0.3;"></i></span>
+                    </div>
+                    <div class="bracket-team-row ${t2Class}" ${t2Click}>
+                        <div class="team-cell">
+                            ${m1.team2.teamIconUrl ? \`<img class="team-logo" src="\${m1.team2.teamIconUrl}">\` : \`<i class="fa-solid fa-question-circle" style="color:var(--text-muted);font-size:0.95rem;width:16px;"></i>\`}
+                            <span title="\${translateTeamName(m1.team2.teamName)}">\${m1.team2.shortName || translateTeamName(m1.team2.teamName)}</span>
+                        </div>
+                        <span class="bracket-score"><i class="fa-solid fa-hand-pointer" style="font-size:0.7rem; opacity:0.3;"></i></span>
+                    </div>
+                    <div class="bracket-match-info"><span>\${winnerObj ? 'Simulado' : 'Clic para avanzar'}</span></div>
+                `;
+            } else {
+                const score1 = getMatchScore(m1);
+                const score2 = m2 ? getMatchScore(m2) : null;
+                let t1Agg = score1.score1; let t2Agg = score1.score2;
+                if (m2) {
+                    if (m2.team1.teamId === m1.team2.teamId) { t1Agg += score2.score2; t2Agg += score2.score1; }
+                    else { t1Agg += score2.score1; t2Agg += score2.score2; }
+                }
+
+                let t1Class = ''; let t2Class = '';
+                const getWinner = (m) => {
+                    if (!m) return null;
+                    if (m.matchIsFinished) {
+                        const s = getMatchScore(m);
+                        if (s.score1 > s.score2) return m.team1;
+                        if (s.score2 > s.score1) return m.team2;
+                        const pen = m.matchResults && m.matchResults.find(r => r.resultTypeID === 4);
+                        if (pen) {
+                            if (pen.pointsTeam1 > pen.pointsTeam2) return m.team1;
+                            return m.team2;
+                        }
                     }
-                }
-                return null;
-            };
+                    return null;
+                };
 
-            const winnerTeam = getWinner(m1) || (m2 ? getWinner(m2) : null);
-            if (winnerTeam) {
-                if (m1.team1.teamId === winnerTeam.teamId) {
-                    t1Class = 'winner'; t2Class = 'loser';
-                } else if (m1.team2.teamId === winnerTeam.teamId) {
-                    t2Class = 'winner'; t1Class = 'loser';
+                const winnerTeam = getWinner(m1) || (m2 ? getWinner(m2) : null);
+                if (winnerTeam) {
+                    if (m1.team1.teamId === winnerTeam.teamId) { t1Class = 'winner'; t2Class = 'loser'; }
+                    else if (m1.team2.teamId === winnerTeam.teamId) { t2Class = 'winner'; t1Class = 'loser'; }
                 }
+
+                const isLive = !m1.matchIsFinished || (m2 && !m2.matchIsFinished);
+
+                matchNode.innerHTML = `
+                    <div class="bracket-team-row ${t1Class}">
+                        <div class="team-cell">
+                            ${m1.team1.teamIconUrl ? \`<img class="team-logo" src="\${m1.team1.teamIconUrl}">\` : \`<i class="fa-solid fa-question-circle" style="color:var(--text-muted);font-size:0.95rem;width:16px;"></i>\`}
+                            <span title="\${translateTeamName(m1.team1.teamName)}">\${m1.team1.shortName || translateTeamName(m1.team1.teamName)}</span>
+                        </div>
+                        <span class="bracket-score">\${(m1.matchIsFinished || isLive) && !m1.isVirtual ? t1Agg : '-'}</span>
+                    </div>
+                    <div class="bracket-team-row ${t2Class}">
+                        <div class="team-cell">
+                            ${m1.team2.teamIconUrl ? \`<img class="team-logo" src="\${m1.team2.teamIconUrl}">\` : \`<i class="fa-solid fa-question-circle" style="color:var(--text-muted);font-size:0.95rem;width:16px;"></i>\`}
+                            <span title="\${translateTeamName(m1.team2.teamName)}">\${m1.team2.shortName || translateTeamName(m1.team2.teamName)}</span>
+                        </div>
+                        <span class="bracket-score">\${(m1.matchIsFinished || isLive) && !m1.isVirtual ? t2Agg : '-'}</span>
+                    </div>
+                    <div class="bracket-match-info">
+                        \${m1.isVirtual ? \`<span>Fase de Llaves</span>\` : (m2 ? \`<span>Ida: \${score1.score1}-\${score1.score2} | Vta: \${score2 ? \`\${score2.score1}-\${score2.score2}\` : '?' }</span>\` : \`<span>Partido Único</span>\`)}
+                        \${isLive && !m1.isVirtual && (!m1.matchIsFinished || (m2 && !m2.matchIsFinished)) ? \`<span class="bracket-live-badge"><span class="live-pulse"></span> VIVO</span>\` : ''}
+                    </div>
+                `;
             }
-
-            const isLive = !m1.matchIsFinished || (m2 && !m2.matchIsFinished);
-
-            matchNode.innerHTML = `
-                <div class="bracket-team-row ${t1Class}">
-                    <div class="team-cell">
-                        ${m1.team1.teamIconUrl ? `<img class="team-logo" src="${m1.team1.teamIconUrl}" onerror="this.src='https://placehold.co/16x16/111827/ffffff?text=${m1.team1.shortName || 'EQ'}'">` : `<i class="fa-solid fa-question-circle" style="color: var(--text-muted); font-size: 0.95rem; width:16px;"></i>`}
-                        <span title="${translateTeamName(m1.team1.teamName)}">${m1.team1.shortName || translateTeamName(m1.team1.teamName)}</span>
-                    </div>
-                    <span class="bracket-score">${(m1.matchIsFinished || isLive) && !m1.isVirtual ? t1Agg : '-'}</span>
-                </div>
-                <div class="bracket-team-row ${t2Class}">
-                    <div class="team-cell">
-                        ${m1.team2.teamIconUrl ? `<img class="team-logo" src="${m1.team2.teamIconUrl}" onerror="this.src='https://placehold.co/16x16/111827/ffffff?text=${m1.team2.shortName || 'EQ'}'">` : `<i class="fa-solid fa-question-circle" style="color: var(--text-muted); font-size: 0.95rem; width:16px;"></i>`}
-                        <span title="${translateTeamName(m1.team2.teamName)}">${m1.team2.shortName || translateTeamName(m1.team2.teamName)}</span>
-                    </div>
-                    <span class="bracket-score">${(m1.matchIsFinished || isLive) && !m1.isVirtual ? t2Agg : '-'}</span>
-                </div>
-                <div class="bracket-match-info">
-                    ${m1.isVirtual ? `<span>Fase de Llaves</span>` : (m2 ? `<span>Ida: ${score1.score1}-${score1.score2} | Vta: ${score2 ? `${score2.score1}-${score2.score2}` : '?' }</span>` : `<span>Partido Único</span>`)}
-                    ${isLive && !m1.isVirtual && (!m1.matchIsFinished || (m2 && !m2.matchIsFinished)) ? `
-                        <span class="bracket-live-badge"><span class="live-pulse"></span> VIVO</span>
-                    ` : ''}
-                </div>
-            `;
             roundColumn.appendChild(matchNode);
         });
-
         bracketWrapper.appendChild(roundColumn);
     });
-
     container.appendChild(bracketWrapper);
 }
 
