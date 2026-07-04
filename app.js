@@ -1086,11 +1086,16 @@ function renderBracket() {
 
         const pairedMatches = pairDoubleLegMatches(phase.matches);
 
+        const matchNodesHTML = [];
+
         pairedMatches.forEach(pair => {
             const matchNode = document.createElement('div');
             matchNode.className = 'bracket-match-node';
             const m1 = pair.match1;
             const m2 = pair.match2;
+            
+            const matchDateStr = m1.matchDateTime ? new Date(m1.matchDateTime).toLocaleDateString('es-ES', {weekday: 'short', day: 'numeric', month: 'numeric'}) : 'A definir';
+            const timeStr = m1.matchDateTime ? new Date(m1.matchDateTime).toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'}) : '';
 
             if (m1.isProjected) {
                 const winnerObj = STATE.simulatedWinners[m1.matchID];
@@ -1104,6 +1109,7 @@ function renderBracket() {
                 const t2Click = (m1.team2.teamId && !m1.team2.teamId.toString().startsWith('tbd')) ? `onclick='window.advanceTeam("${m1.matchID}", ${JSON.stringify(m1.team2).replace(/'/g,"&apos;")}, "${m1.nextMatchID}")'` : '';
 
                 matchNode.innerHTML = `
+                    <div class="bracket-match-header"><span>\${matchDateStr}</span> <span class="bracket-time">\${timeStr}</span></div>
                     <div class="bracket-team-row ${t1Class}" ${t1Click}>
                         <div class="team-cell">
                             ${m1.team1.teamIconUrl ? \`<img class="team-logo" src="\${m1.team1.teamIconUrl}">\` : \`<i class="fa-solid fa-question-circle" style="color:var(--text-muted);font-size:0.95rem;width:16px;"></i>\`}
@@ -1118,7 +1124,6 @@ function renderBracket() {
                         </div>
                         <span class="bracket-score"><i class="fa-solid fa-hand-pointer" style="font-size:0.7rem; opacity:0.3;"></i></span>
                     </div>
-                    <div class="bracket-match-info"><span>\${winnerObj ? 'Simulado' : 'Clic para avanzar'}</span></div>
                 `;
             } else {
                 const score1 = getMatchScore(m1);
@@ -1152,8 +1157,10 @@ function renderBracket() {
                 }
 
                 const isLive = !m1.matchIsFinished || (m2 && !m2.matchIsFinished);
+                const statusStr = isLive && (!m1.matchIsFinished || (m2 && !m2.matchIsFinished)) ? '<span class="bracket-live-badge"><span class="live-pulse"></span> VIVO</span>' : (m1.matchIsFinished ? 'Fin' : timeStr);
 
                 matchNode.innerHTML = `
+                    <div class="bracket-match-header"><span>\${matchDateStr}</span> <span class="bracket-time">\${statusStr}</span></div>
                     <div class="bracket-team-row ${t1Class}">
                         <div class="team-cell">
                             ${m1.team1.teamIconUrl ? \`<img class="team-logo" src="\${m1.team1.teamIconUrl}">\` : \`<i class="fa-solid fa-question-circle" style="color:var(--text-muted);font-size:0.95rem;width:16px;"></i>\`}
@@ -1168,14 +1175,21 @@ function renderBracket() {
                         </div>
                         <span class="bracket-score">\${(m1.matchIsFinished || isLive) && !m1.isVirtual ? t2Agg : '-'}</span>
                     </div>
-                    <div class="bracket-match-info">
-                        \${m1.isVirtual ? \`<span>Fase de Llaves</span>\` : (m2 ? \`<span>Ida: \${score1.score1}-\${score1.score2} | Vta: \${score2 ? \`\${score2.score1}-\${score2.score2}\` : '?' }</span>\` : \`<span>Partido Único</span>\`)}
-                        \${isLive && !m1.isVirtual && (!m1.matchIsFinished || (m2 && !m2.matchIsFinished)) ? \`<span class="bracket-live-badge"><span class="live-pulse"></span> VIVO</span>\` : ''}
-                    </div>
                 `;
             }
-            roundColumn.appendChild(matchNode);
+            matchNodesHTML.push(matchNode);
         });
+
+        for (let i = 0; i < matchNodesHTML.length; i += 2) {
+            const pairWrapper = document.createElement('div');
+            pairWrapper.className = 'bracket-match-pair';
+            pairWrapper.appendChild(matchNodesHTML[i]);
+            if (matchNodesHTML[i+1]) {
+                pairWrapper.appendChild(matchNodesHTML[i+1]);
+            }
+            roundColumn.appendChild(pairWrapper);
+        }
+        
         bracketWrapper.appendChild(roundColumn);
     });
     container.appendChild(bracketWrapper);
